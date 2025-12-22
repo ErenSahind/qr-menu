@@ -26,6 +26,7 @@
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
     "@supabase/supabase-js": "^2.89.0",
+    "nanoid": "^5.1.6",
     "next": "^16.1.0",
     "next-intl": "^4.6.1",
     "react": "^19.2.3",

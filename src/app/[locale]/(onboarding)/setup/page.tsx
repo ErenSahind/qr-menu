@@ -2,23 +2,70 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { nanoid } from "nanoid";
 
 export default function SetupPage() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     branchName: "",
     slug: "",
-    tableCount: 1,
+    tableCount: 10,
     useTableNumbers: true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // API call to save branch details
-    // await createBranch(formData);
+    setLoading(true);
 
-    // Başarılı olursa dashboard'a yönlendir
-    router.push("/dashboard");
+    try {
+      // 1. Kullanıcıyı al
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) throw new Error("Kullanıcı oturumu bulunamadı.");
+
+      // 2. Şubeyi oluştur
+      const { data: branch, error: branchError } = await supabase
+        .from("branches")
+        .insert({
+          owner_id: user.id,
+          name: formData.branchName,
+          slug: formData.slug,
+        })
+        .select()
+        .single();
+
+      if (branchError) throw branchError;
+
+      // 3. Masaları oluştur
+      if (formData.tableCount > 0) {
+        const tables = Array.from({ length: formData.tableCount }).map(
+          (_, i) => ({
+            branch_id: branch.id,
+            table_number: (i + 1).toString(),
+            qr_code: nanoid(5), // 5 karakterlik ID
+          })
+        );
+
+        const { error: tablesError } = await supabase
+          .from("tables")
+          .insert(tables);
+
+        if (tablesError) throw tablesError;
+      }
+
+      // 4. Başarılı, dashboard'a git
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error: any) {
+      console.error("Setup Error:", error);
+      alert("Bir hata oluştu: " + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,6 +87,7 @@ export default function SetupPage() {
               setFormData({ ...formData, branchName: e.target.value })
             }
             required
+            placeholder="Örn: Kadıköy Şubesi"
           />
         </div>
 
