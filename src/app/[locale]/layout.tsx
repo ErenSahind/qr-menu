@@ -1,6 +1,5 @@
 import "./globals.css";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import ThemeRegistry from "@/components/ThemeRegistry/ThemeRegistry";
 import { notFound } from "next/navigation";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
@@ -23,7 +22,7 @@ export default async function RootLayout({ children, params }: Props) {
     <html lang={locale}>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <ThemeRegistry>{children}</ThemeRegistry>
+          {children}
         </NextIntlClientProvider>
       </body>
     </html>

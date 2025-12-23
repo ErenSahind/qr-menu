@@ -1,7 +1,7 @@
 {
   "name": "qr-menu",
   "version": "1.0.0",
-  "description": "**Soru:** Table URL'de olursa müşteriler editleyebilir, bu sıkıntı olur mu?\r **Cevap:** Evet, tahmin edilebilir ID'ler risklidir.\r **Çözüm:** Masa numaralarını URL'de \"ID\" olarak değil, **NanoID** benzeri kısa ama tahmin edilemez stringler (7-10 karakter) olarak tutacağız.\r - **Kötü:** `domain.com/tr/m/cafe-adi/1`\r - **İyi:** `domain.com/tr/m/cafe-adi/x7Ka2bP9`\r Bu sayede URL hem kısa kalır hem de güvenli olur.",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
@@ -23,17 +23,24 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
     "@supabase/supabase-js": "^2.89.0",
+    "@tabler/icons-react": "^3.36.0",
+    "@types/lodash": "^4.17.21",
+    "lodash": "^4.17.21",
     "nanoid": "^5.1.6",
     "next": "^16.1.0",
     "next-intl": "^4.6.1",
+    "next-themes": "^0.4.6",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "react-hook-form": "^7.69.0",
+    "zod": "^4.2.1",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -42,7 +49,7 @@
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
+    "supabase": "^2.67.3",
     "typescript": "^5.9.3"
   }
 }

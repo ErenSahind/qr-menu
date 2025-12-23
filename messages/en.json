@@ -1,1 +1,6 @@
-{}
+{
+  "Login": {
+    "title": "Login",
+    "email": "Email"
+  }
+}
