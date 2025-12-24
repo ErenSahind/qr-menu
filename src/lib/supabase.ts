@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
+import { Database } from "../../supabase/types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublicKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY!;
 
 // Standart istemci (Client ve Server'da güvenle kullanılabilir)
 // RLS (Row Level Security) kurallarına tabidir.
-export const supabase = createClient(supabaseUrl, supabasePublicKey);
+export const supabase = createClient<Database>(supabaseUrl, supabasePublicKey);
 
 // Admin istemcisi (SADECE Server-side kullanılmalı)
 // RLS'i bypass eder, her şeyi yapabilir (User silme, tüm datayı okuma vb.)
@@ -20,5 +21,5 @@ export const getSupabaseAdmin = () => {
     );
   }
 
-  return createClient(supabaseUrl, supabaseSecretKey);
+  return createClient<Database>(supabaseUrl, supabaseSecretKey);
 };

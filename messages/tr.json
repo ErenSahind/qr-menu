@@ -1,6 +1,20 @@
 {
   "Login": {
     "title": "Giriş Yap",
-    "email": "E-posta"
+    "welcome_title": "X'e Hoşgeldiniz",
+    "welcome_subtitle": "Kişisel QR Menü sisteminiz.",
+    "email_label": "E-posta Adresi",
+    "email_placeholder": "isim@ornek.com",
+    "password_label": "Şifre",
+    "remember_me": "Bu Cihazı Hatırla",
+    "or": "YA DA",
+    "forgot_password": "Şifremi Unuttum?",
+    "no_account": "Hesabınız yok mu?",
+    "register": "Kayıt Ol"
+  },
+  "Validations": {
+    "email_required": "Geçerli bir email adresi giriniz.",
+    "password_min": "Şifre en az 6 karakter olmalıdır.",
+    "password_mismatch": "Şifreler eşleşmiyor."
   }
 }

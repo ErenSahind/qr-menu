@@ -1,94 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
-import {
-  Button,
-  Typography,
-  Box,
-  Grid,
-  Avatar,
-  Divider,
-  Stack,
-  FormGroup,
-  FormControlLabel,
-  styled,
-} from "@mui/material";
-import { useCustomizerStore } from "@/store/useCustomizerStore";
-import { IconMail, IconPassword } from "@tabler/icons-react";
-import CustomInput from "@/components/Form/CustomInput";
-import { MyFormContainer } from "@/components/Form/MyFormContainer";
-import { useForm } from "react-hook-form";
-import CustomCheckbox from "@/components/Form/CustomCheckbox";
-import DarkLightMode from "@/components/Theme/DarkLightMode";
+import { useForm, FormProvider } from "react-hook-form";
 import { useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+
+import { CustomLink } from "@/components/custom-link";
+import { Button } from "@/components/ui/button";
+import { FormInput } from "@/components/form/form-input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { createLoginSchema, type LoginSchema } from "@/lib/validations/auth";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { resolvedTheme, setTheme } = useTheme();
+  const [showPassword, setShowPassword] = useState(false);
   const t = useTranslations("Login");
-  const isCollapse = useCustomizerStore((state) => state.isCollapse);
-  const isSidebarHover = useCustomizerStore((state) => state.isSidebarHover);
+  const tValidations = useTranslations("Validations");
 
-  const methods = useForm({
+  const loginSchema = createLoginSchema(tValidations);
+
+  const methods = useForm<LoginSchema>({
     defaultValues: {
       email: "",
       password: "",
     },
+    resolver: zodResolver(loginSchema),
     mode: "all",
   });
+  const { handleSubmit } = methods;
 
-  const onSubmitHandler = async (data: FormData) => {
-    try {
-    } catch (error) {}
+  const onSubmit = (data: LoginSchema) => {
+    console.log(data);
   };
 
-  const LinkStyled = styled(Link)(() => ({
-    height: "64px",
-    width: isCollapse == "mini-sidebar" && !isSidebarHover ? "40px" : "180px",
-    overflow: "hidden",
-    display: "block",
-  }));
   return (
-    <Grid
-      container
-      spacing={0}
-      justifyContent="center"
-      sx={{
-        height: "100vh",
-        backgroundColor: "white",
-        "html.dark &": {
-          backgroundColor: "#1c222e",
-        },
-      }}
-    >
-      <Grid
-        size={{
-          xs: 12,
-          sm: 12,
-          lg: 3,
-          xl: 4,
-        }}
-        height={1}
-      >
-        <Box px={3} sx={{ display: "flex", justifyContent: "space-between" }}>
-          <LinkStyled
-            href="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <Box
-              component="span"
-              sx={{
-                display: "block",
-                "html.dark &": { display: "none" },
-              }}
-            >
+    <div className="flex min-h-screen w-full bg-background text-foreground">
+      {/* Left Side - Form */}
+      <div className="flex w-full flex-col justify-between p-8 lg:w-1/3 lg:px-12 xl:w-3/7">
+        <div className="flex items-center justify-between">
+          <CustomLink href="/" className="flex items-center gap-2">
+            <div className="block dark:hidden">
               <Image
                 src="/images/logos/dark-logo.svg"
                 alt="logo"
@@ -96,14 +50,8 @@ export default function LoginPage() {
                 height={64}
                 priority
               />
-            </Box>
-            <Box
-              component="span"
-              sx={{
-                display: "none",
-                "html.dark &": { display: "block" },
-              }}
-            >
+            </div>
+            <div className="hidden dark:block">
               <Image
                 src="/images/logos/light-logo.svg"
                 alt="logo"
@@ -111,162 +59,108 @@ export default function LoginPage() {
                 height={64}
                 priority
               />
-            </Box>
-          </LinkStyled>
-          <DarkLightMode />
-        </Box>
-        <Grid
-          container
-          justifyContent="center"
-          alignItems="center"
-          height="calc(100% - 64px)"
-        >
-          <Grid
-            size={{
-              xs: 12,
-              lg: 8,
-            }}
-          >
-            <Box display="flex" flexDirection="column">
-              <Box p={4}>
-                <MyFormContainer
-                  methods={methods}
-                  onSubmitHandler={onSubmitHandler}
-                >
-                  <Typography
-                    fontWeight="700"
-                    variant="h3"
-                    mb={1}
-                    textAlign="center"
-                  >
-                    Welcome to X
-                  </Typography>
-                  <Typography
-                    variant="subtitle1"
-                    color="textSecondary"
-                    mb={1}
-                    textAlign="center"
-                  >
-                    Your personal QR Menu system.
-                  </Typography>
-                  {/* <AuthSocialButtons /> */}
-                  {/* <Box mt={3}>
-                    <Divider>
-                      <Typography
-                        component="span"
-                        variant="h6"
-                        fontWeight="400"
-                        position="relative"
-                        px={2}
-                      >
-                        or sign in with
-                      </Typography>
-                    </Divider>
-                  </Box> */}
-                  <Stack>
-                    <CustomInput
-                      name="email"
-                      label="Email Address"
-                      fullWidth
-                      icon={<IconMail width={20} />}
-                    />
+            </div>
+          </CustomLink>
+          <ThemeToggle />
+        </div>
 
-                    <CustomInput
-                      name="password"
-                      label="Password"
-                      type="password"
-                      fullWidth
-                      icon={<IconPassword width={20} />}
-                    />
-                    <Stack
-                      justifyContent="space-between"
-                      direction="row"
-                      alignItems="center"
-                      my={2}
-                    >
-                      <FormGroup>
-                        <FormControlLabel
-                          control={<CustomCheckbox defaultChecked />}
-                          label="Remeber this Device"
-                        />
-                      </FormGroup>
-                      <Typography
-                        component={Link}
-                        href="/forgot-password"
-                        fontWeight="500"
-                        sx={{
-                          textDecoration: "none",
-                          color: "primary.main",
-                        }}
-                      >
-                        Forgot Password ?
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                  <Box>
-                    <Button
-                      color="primary"
-                      variant="contained"
-                      size="large"
-                      fullWidth
-                      type="submit"
-                    >
-                      {t("title")}
-                    </Button>
-                  </Box>
-                </MyFormContainer>
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-      </Grid>
-      <Grid
-        sx={{
-          position: "relative",
-          "&:before": {
-            content: '""',
-            background: "radial-gradient(#d2f1df,#d3d7fa,#bad8f4)",
-            backgroundSize: "400% 400%",
-            animation: "gradient 15s ease infinite",
-            position: "absolute",
-            height: "100%",
-            width: "100%",
-            opacity: "0.3",
-          },
-        }}
-        size={{
-          xs: 12,
-          sm: 12,
-          lg: 9,
-          xl: 8,
-        }}
-      >
-        <Box position="relative">
-          <Box
-            alignItems="center"
-            justifyContent="center"
-            height={"calc(100vh - 75px)"}
-            sx={{
-              display: {
-                xs: "none",
-                lg: "flex",
-              },
-            }}
-          >
-            <Avatar
+        <div className="flex flex-1 flex-col xl:px-20 justify-center space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {t("welcome_title")}
+            </h1>
+            <p className="text-muted-foreground">{t("welcome_subtitle")}</p>
+          </div>
+
+          <FormProvider {...methods}>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <FormInput
+                name="email"
+                label={t("email_label")}
+                startAdornment={<Mail />}
+                placeholder={t("email_placeholder")}
+              />
+
+              <FormInput
+                name="password"
+                label={t("password_label")}
+                type={showPassword ? "text" : "password"}
+                startAdornment={<Lock />}
+                endAdornment={
+                  <Button
+                    variant={"ghost"}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                }
+              />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="remember" />
+                  <Label htmlFor="remember" className="text-sm font-normal">
+                    {t("remember_me")}
+                  </Label>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full" size="lg">
+                {t("title")}
+              </Button>
+
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    {t("or")}
+                  </span>
+                </div>
+              </div>
+              <div className="text-center">
+                <CustomLink
+                  href="/forgot-password"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  {t("forgot_password")}
+                </CustomLink>
+              </div>
+              <div className="text-center text-sm">
+                <span className="text-muted-foreground">
+                  {t("no_account")}{" "}
+                </span>
+                <CustomLink
+                  href="/register"
+                  className="font-medium text-primary hover:underline"
+                >
+                  {t("register")}
+                </CustomLink>
+              </div>
+            </form>
+          </FormProvider>
+        </div>
+      </div>
+
+      {/* Right Side - Image */}
+      <div className="relative hidden w-full lg:block lg:w-2/3 xl:w-4/7">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#d2f1df] via-[#d3d7fa] to-[#bad8f4] opacity-30 animate-gradient" />
+        <div className="flex h-full items-center justify-center">
+          <div className="relative h-[450px] w-[676px]">
+            <Image
               src="/images/backgrounds/user-login.png"
-              alt="bg"
-              sx={{
-                borderRadius: 0,
-                width: "100%",
-                height: "100%",
-                maxWidth: "676px",
-                maxHeight: "450px",
-              }}
+              alt="Login Background"
+              fill
+              className="object-contain"
             />
-          </Box>
-        </Box>
-      </Grid>
-    </Grid>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

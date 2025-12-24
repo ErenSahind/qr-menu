@@ -3,15 +3,12 @@
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  TextField,
-  Button,
-  Container,
-  Typography,
-  Box,
-  Paper,
-} from "@mui/material";
 import { supabase } from "@/lib/supabase";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -35,8 +32,6 @@ export default function RegisterPage() {
 
       if (error) throw error;
 
-      // Başarılı kayıt sonrası setup sayfasına yönlendir
-      // Not: E-posta onayı gerekiyorsa kullanıcıyı bilgilendirmek gerekir.
       router.push(`/${locale}/setup`);
     } catch (err: any) {
       setError(err.message);
@@ -46,60 +41,55 @@ export default function RegisterPage() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Kayıt Ol
-        </Typography>
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">Kayıt Ol</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <Typography color="error" sx={{ mb: 2 }} align="center">
-            {error}
-          </Typography>
-        )}
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Şifre</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
-        <Box component="form" onSubmit={handleRegister} sx={{ mt: 2 }}>
-          <TextField
-            label="Email"
-            type="email"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <TextField
-            label="Şifre"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Kaydediliyor..." : "Kayıt Ol"}
+            </Button>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            fullWidth
-            size="large"
-            sx={{ mt: 3, mb: 2 }}
-            disabled={loading}
-          >
-            {loading ? "Kaydediliyor..." : "Kayıt Ol"}
-          </Button>
-
-          <Box textAlign="center">
-            <Link
-              href={`/${locale}/login`}
-              style={{ textDecoration: "none", color: "#1976d2" }}
-            >
-              Zaten hesabınız var mı? Giriş Yapın
-            </Link>
-          </Box>
-        </Box>
-      </Paper>
-    </Container>
+            <div className="text-center text-sm">
+              <Link
+                href={`/${locale}/login`}
+                className="text-primary hover:underline"
+              >
+                Zaten hesabınız var mı? Giriş Yapın
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

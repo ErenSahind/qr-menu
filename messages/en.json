@@ -1,6 +1,20 @@
 {
   "Login": {
     "title": "Login",
-    "email": "Email"
+    "welcome_title": "Welcome to X",
+    "welcome_subtitle": "Your personal QR Menu system.",
+    "email_label": "Email Address",
+    "email_placeholder": "name@example.com",
+    "password_label": "Password",
+    "remember_me": "Remember this Device",
+    "or": "OR",
+    "forgot_password": "Forgot Password?",
+    "no_account": "Don't have an account?",
+    "register": "Register"
+  },
+  "Validations": {
+    "email_required": "Please enter a valid email address.",
+    "password_min": "Password must be at least 6 characters.",
+    "password_mismatch": "Passwords do not match."
   }
 }
