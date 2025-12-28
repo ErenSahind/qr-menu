@@ -38,6 +38,7 @@ declare
   allowed boolean;
   owner_uuid uuid;
   image_val text;
+  target_branch_id uuid;
 begin
   -- Optimization: Skip if update and image value hasn't changed
   if TG_OP = 'UPDATE' then
@@ -63,7 +64,8 @@ begin
     owner_uuid := new.id;
   else
     image_val := new.image_url;
-    select owner_id into owner_uuid from public.branches where id = new.branch_id;
+    target_branch_id := new.branch_id;
+    select owner_id into owner_uuid from public.branches where id = target_branch_id;
   end if;
 
   -- Güvenlik: Owner bulunamazsa işlem yapma (Data integrity)
@@ -82,6 +84,10 @@ begin
   from public.profiles p
   join public.plan_features pf on pf.plan = p.subscription_plan
   where p.id = owner_uuid;
+
+  if allowed is null then
+    raise exception 'PLAN_NOT_FOUND_FOR_OWNER';
+  end if;
 
   if allowed is not true then
     raise exception 'IMAGE_UPLOAD_NOT_ALLOWED_FOR_PLAN';
@@ -125,10 +131,13 @@ create policy "Users can insert their own profile."
 
 create policy "Users can update own profile."
   on profiles for update
-  using ( auth.uid() = id );
+  using ( auth.uid() = id )
+  with check ( auth.uid() = id );
 
 -- 3.1 TRIGGER: Protect Sensitive Profile Fields
 -- Kullanıcıların kendi abonelik bilgilerini veya rollerini değiştirmesini engeller.
+-- NOT: RLS politikası (Users can update own profile) güncellemeye izin verse bile,
+-- bu trigger belirli alanların (plan, rol, vb.) değiştirilmesini bilinçli olarak engeller.
 create or replace function public.protect_profile_fields()
 returns trigger as $$
 begin
@@ -236,14 +245,6 @@ create policy "Users can insert their own branches."
   on branches for insert
   with check ( auth.uid() = owner_id );
 
-create policy "Branch owners and managers can update branches."
-  on branches for update
-  using ( 
-    auth.uid() = owner_id 
-    or 
-    exists ( select 1 from public.branch_staff where branch_staff.branch_id = branches.id and branch_staff.user_id = auth.uid() and branch_staff.role = 'manager' and branch_staff.is_active = true )
-  );
-
 create policy "Users can delete their own branches."
   on branches for delete
   using ( auth.uid() = owner_id );
@@ -276,6 +277,15 @@ create policy "Staff can view their own records."
   on branch_staff for select
   using ( auth.uid() = user_id );
 
+-- Moved here because it references branch_staff which is created above
+create policy "Branch owners and managers can update branches."
+  on branches for update
+  using ( 
+    auth.uid() = owner_id 
+    or 
+    exists ( select 1 from public.branch_staff where branch_staff.branch_id = branches.id and branch_staff.user_id = auth.uid() and branch_staff.role = 'manager' and branch_staff.is_active = true )
+  );
+
 -- 5.1 TRIGGER: Enforce Staff Limit
 create or replace function public.check_staff_limit()
 returns trigger as $$
@@ -284,18 +294,35 @@ declare
   max_allowed int;
   owner_uuid uuid;
   is_already_staff boolean;
+  target_branch_id uuid;
+  target_user_id uuid;
+  target_record_id uuid;
 begin
   -- 2. Check: Handle UPDATE
   if TG_OP = 'UPDATE' then
+    -- Guard Logic: Sadece "Pasif -> Aktif" geçişlerinde limit kontrolü yapılmalı.
+    -- Eğer personel zaten aktifse (old.is_active = true) veya yeni durum pasifse (new.is_active = false),
+    -- limit kontrolüne gerek yoktur.
     if old.is_active = true or new.is_active = false then
       return new;
     end if;
   end if;
 
+  target_branch_id := new.branch_id;
+  target_user_id := new.user_id;
+  target_record_id := new.id;
+
   -- Eklenen personelin hangi şubeye ait olduğunu ve o şubenin sahibini bul
   select owner_id into owner_uuid
   from public.branches
-  where id = new.branch_id;
+  where id = target_branch_id;
+
+  if owner_uuid is null then
+    raise exception 'BRANCH_NOT_FOUND';
+  end if;
+
+  -- Concurrency Fix: Global Staff Pool Race Condition
+  perform pg_advisory_xact_lock(hashtext(owner_uuid::text));
 
   -- Plan limitini çek
   select pf.max_staff into max_allowed
@@ -315,9 +342,9 @@ begin
     from public.branch_staff bs
     join public.branches b on b.id = bs.branch_id
     where b.owner_id = owner_uuid
-      and bs.user_id = new.user_id
+      and bs.user_id = target_user_id
       and bs.is_active = true
-      and bs.id <> new.id -- Update durumunda kendi kaydını hariç tut
+      and bs.id <> target_record_id -- Update durumunda kendi kaydını hariç tut
   ) into is_already_staff;
 
   if is_already_staff then
@@ -478,7 +505,8 @@ begin
   select default_signup_plan, default_trial_days 
   into def_plan, def_days
   from public.system_settings
-  where id = 1;
+  where id = 1
+  limit 1;
 
   if def_plan is null then
     def_plan := 'free';
@@ -541,6 +569,19 @@ create trigger on_orders_touch_updated
   before update on public.orders
   for each row execute procedure public.touch_updated_at();
 
+-- 11.0.1 TRIGGER: Auto-set last_updated_by
+create or replace function public.set_last_updated_by()
+returns trigger as $$
+begin
+  new.last_updated_by := auth.uid();
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create trigger on_orders_set_last_updated_by
+  before update on public.orders
+  for each row execute procedure public.set_last_updated_by();
+
 -- 11.1 TRIGGER: Check Ordering Permission (Feature Gating)
 -- Free planda sipariş özelliği kapalıysa DB seviyesinde engelle.
 create or replace function public.check_ordering_permission()
@@ -569,15 +610,21 @@ create trigger check_ordering_permission_trigger
 -- 11.2 TRIGGER: Rate Limit Orders (Anti-Spam)
 create or replace function public.limit_order_frequency()
 returns trigger as $$
+declare
+  target_session_id uuid;
+  target_branch_id uuid;
 begin
+  target_session_id := new.customer_session_id;
+  target_branch_id := new.branch_id;
+
   -- 4. Race Condition Fix: Advisory Lock
   -- Branch + Session bazlı kilitleme (Aynı şubeye aynı anda spam yapılmasın)
-  perform pg_advisory_xact_lock(hashtext(new.customer_session_id::text || '-' || new.branch_id::text));
+  perform pg_advisory_xact_lock(hashtext(target_session_id::text || '-' || target_branch_id::text));
 
   if exists (
     select 1 from public.orders
-    where customer_session_id = new.customer_session_id
-    and branch_id = new.branch_id -- Sadece ilgili şube için kontrol et
+    where customer_session_id = target_session_id
+    and branch_id = target_branch_id -- Sadece ilgili şube için kontrol et
     and created_at >= now() - interval '5 seconds'
   ) then
     raise exception 'ORDER_RATE_LIMIT';
@@ -589,6 +636,24 @@ $$ language plpgsql security definer set search_path = public;
 create trigger check_order_frequency
   before insert on public.orders
   for each row execute procedure public.limit_order_frequency();
+
+-- 11.3 TRIGGER: Protect Immutable Order Fields
+create or replace function public.protect_order_fields()
+returns trigger as $$
+begin
+  if new.total_amount is distinct from old.total_amount
+     or new.branch_id is distinct from old.branch_id
+     or new.customer_session_id is distinct from old.customer_session_id then
+    raise exception 'ORDER_IMMUTABLE_FIELDS';
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create trigger protect_orders_update
+  before update on public.orders
+  for each row execute procedure public.protect_order_fields();
 
 -- Enable RLS for orders
 alter table public.orders enable row level security;
@@ -619,11 +684,6 @@ create policy "Branch owners and managers can update orders."
     exists ( select 1 from public.branches where branches.id = orders.branch_id and branches.owner_id = auth.uid() )
     or
     exists ( select 1 from public.branch_staff where branch_staff.branch_id = orders.branch_id and branch_staff.user_id = auth.uid() and branch_staff.role = 'manager' and branch_staff.is_active = true )
-  )
-  with check ( 
-    new.total_amount = old.total_amount 
-    and new.branch_id = old.branch_id 
-    and new.customer_session_id = old.customer_session_id 
   );
 
 -- Restoran sahibi VE Manager siparişi silebilir
@@ -691,6 +751,21 @@ create policy "Branch owners and managers can delete order items."
     or
     exists ( select 1 from public.orders join public.branch_staff on branch_staff.branch_id = orders.branch_id where orders.id = order_items.order_id and branch_staff.user_id = auth.uid() and branch_staff.role = 'manager' and branch_staff.is_active = true )
   );
+
+-- 12.1 TRIGGER: Protect Immutable Order Item Fields
+create or replace function public.protect_order_item_price()
+returns trigger as $$
+begin
+  if new.price is distinct from old.price then
+    raise exception 'ORDER_ITEM_PRICE_IMMUTABLE';
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create trigger protect_order_item_update
+  before update on public.order_items
+  for each row execute procedure public.protect_order_item_price();
 
 -- 13. INDEXES (Performance optimization)
 create index idx_orders_customer_session on public.orders(customer_session_id);
@@ -791,6 +866,8 @@ create or replace function public.handle_sort_order()
 returns trigger as $$
 declare
   max_order int;
+  target_branch_id uuid;
+  target_category_id uuid;
 begin
   -- Eğer sort_order manuel olarak gönderildiyse (0'dan büyük), dokunma.
   -- Sadece default (0) geldiğinde otomatik hesapla.
@@ -799,15 +876,17 @@ begin
   end if;
 
   if TG_TABLE_NAME = 'categories' then
-    perform pg_advisory_xact_lock(hashtext(new.branch_id::text));
+    target_branch_id := new.branch_id;
+    perform pg_advisory_xact_lock(hashtext(target_branch_id::text));
     select coalesce(max(sort_order), 0) into max_order
     from public.categories
-    where branch_id = new.branch_id;
+    where branch_id = target_branch_id;
   elsif TG_TABLE_NAME = 'products' then
-    perform pg_advisory_xact_lock(hashtext(new.category_id::text));
+    target_category_id := new.category_id;
+    perform pg_advisory_xact_lock(hashtext(target_category_id::text));
     select coalesce(max(sort_order), 0) into max_order
     from public.products
-    where category_id = new.category_id;
+    where category_id = target_category_id;
   end if;
 
   new.sort_order := max_order + 1;
@@ -826,6 +905,7 @@ create trigger on_product_created
 
 
 -- 18. FUNCTION: Slugify (Türkçe karakter uyumlu URL oluşturucu)
+-- Not: Sadece Türkçe ve İngilizce karakterleri destekler. İleride genişletilmesi gerekebilir.
 create or replace function public.slugify(value text)
 returns text as $$
 begin
@@ -858,11 +938,16 @@ declare
   base_slug text;
   final_slug text;
   counter int := 0;
+  target_owner_id uuid;
+  target_record_id uuid;
 begin
+  target_owner_id := new.owner_id;
+  target_record_id := new.id;
+
   -- Şirket ismini çek (Yoksa isim soyisim kullan)
   select coalesce(company_name, full_name) into c_name
   from public.profiles
-  where id = new.owner_id;
+  where id = target_owner_id;
 
   -- Slug oluştur: sirket-adi + sube-adi
   -- Sadece INSERT işleminde veya İsim değiştiğinde çalışsın
@@ -874,7 +959,7 @@ begin
 
     -- Unique kontrolü (Aynı isimde şube varsa sonuna -1, -2 ekle)
     final_slug := base_slug;
-    while exists (select 1 from public.branches where slug = final_slug and id <> new.id) loop
+    while exists (select 1 from public.branches where slug = final_slug and id <> target_record_id) loop
       counter := counter + 1;
       final_slug := base_slug || '-' || counter;
     end loop;
@@ -898,17 +983,20 @@ create trigger on_branch_create_slug
 create policy "Paid users can upload images"
 on storage.objects for insert
 with check (
-  auth.uid() in (
+  bucket_id = 'images'
+  and auth.uid() in (
     select id from public.profiles p
     join public.plan_features pf on pf.plan = p.subscription_plan
     where pf.allow_images = true
   )
   -- 2. Path Security: images/{owner_id}/... (Biri başkasının klasörüne yazamaz)
+  -- Frontend tarafında dosya yolu mutlaka 'images/' + user.id + '/' + fileName formatında olmalıdır.
   and (split_part(name, '/', 2))::uuid = auth.uid()
 );
 
 -- Not: Metadata kontrolü client-side manipüle edilebilir (Soft Protection / UX Barrier).
 -- Gerçek güvenlik için: Bucket Max Size limiti ve Upload sonrası Edge Function validation şarttır.
+-- WARNING: Multiple INSERT policies are AND-combined in Supabase.
 create policy "Restrict file size to 200KB"
 on storage.objects for insert
 with check (
