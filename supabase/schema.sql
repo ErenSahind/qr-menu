@@ -109,7 +109,7 @@ create table public.profiles (
   country text, -- Ülke
   logo_url text, -- Şirket Logosu (Tüm şubelerde bu görünür - Anti-Reseller)
   is_onboarded boolean default false, -- Kurulum tamamlandı mı?
-  role public.user_role default 'owner', -- ENUM: 'admin', 'owner', 'staff'
+  role public.user_role default 'owner', -- ENUM: 'admin', 'owner', 'staff' -- NOT: İleride staff invite eklendiğinde default değişebilir.
   subscription_plan public.subscription_plan default 'free', -- ENUM: 'free', 'premium', 'ultimate'
   subscription_status public.subscription_status default 'inactive',
   subscription_started_at timestamp with time zone,
@@ -521,7 +521,7 @@ begin
   )
   values (
     new.id, 
-    new.raw_user_meta_data->>'full_name',
+    coalesce(new.raw_user_meta_data->>'full_name', ''),
     def_plan, -- Ayarlardan gelen plan (Örn: 'premium')
     case 
       when def_days > 0 then (now() + (def_days || ' days')::interval)
@@ -776,6 +776,7 @@ create index idx_products_category_id on public.products(category_id);
 create index idx_branch_staff_owner on public.branch_staff(user_id, is_active);
 create index idx_branches_owner on public.branches(owner_id);
 create index idx_orders_branch_status on public.orders(branch_id, status);
+create index idx_orders_branch_created_at on public.orders(branch_id, created_at desc);
 create index idx_qr_scans_branch_date on public.qr_scans(branch_id, scanned_at);
 create index idx_orders_session_time on public.orders(customer_session_id, created_at desc);
 
@@ -1000,6 +1001,6 @@ with check (
 create policy "Restrict file size to 200KB"
 on storage.objects for insert
 with check (
-  (metadata->>'size')::int <= 204800 -- 200KB (200 * 1024 bytes)
+  ((metadata->>'size')::int <= 204800 or metadata->>'size' is null) -- 200KB (200 * 1024 bytes)
   and (metadata->>'mimetype') like 'image/%'
 );
