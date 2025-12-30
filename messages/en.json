@@ -10,9 +10,28 @@
     "or": "OR",
     "forgot_password": "Forgot Password?",
     "no_account": "Don't have an account?",
-    "register": "Register"
+    "register": "Register",
+    "login_failed": "Login Failed"
+  },
+  "Register": {
+    "title": "Register",
+    "welcome_title": "Welcome to X",
+    "welcome_subtitle": "Your personal QR Menu system.",
+    "fullname": "Full Name",
+    "email_label": "Email Address",
+    "email_placeholder": "name@example.com",
+    "fullname_placeholder": "Enter your full name",
+    "password_label": "Password",
+    "or": "OR",
+    "forgot_password": "Forgot Password?",
+    "no_account": "Don't have an account?",
+    "register": "Register",
+    "register_failed": "Register Failed",
+    "have_account": "Already have an account?",
+    "login": "Login"
   },
   "Validations": {
+    "fullname_required": "Please enter your full name.",
     "email_required": "Please enter a valid email address.",
     "password_min": "Password must be at least 6 characters.",
     "password_mismatch": "Passwords do not match."

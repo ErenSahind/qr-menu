@@ -10,9 +10,28 @@
     "or": "YA DA",
     "forgot_password": "Şifremi Unuttum?",
     "no_account": "Hesabınız yok mu?",
-    "register": "Kayıt Ol"
+    "register": "Kayıt Ol",
+    "login_failed": "Giriş Başarısız"
+  },
+  "Register": {
+    "title": "Kayıt Ol",
+    "welcome_title": "X'e Hoşgeldiniz",
+    "welcome_subtitle": "Kişisel QR Menü sisteminiz.",
+    "fullname": "Ad Soyad",
+    "email_label": "E-posta Adresi",
+    "email_placeholder": "isim@ornek.com",
+    "fullname_placeholder": "Ad Soyadınızı Giriniz",
+    "password_label": "Şifre",
+    "or": "YA DA",
+    "forgot_password": "Şifremi Unuttum?",
+    "no_account": "Hesabınız yok mu?",
+    "register": "Kayıt Ol",
+    "register_failed": "Kayıt Başarısız",
+    "have_account": "Zaten bir hesabınız var mı?",
+    "login": "Giriş Yap"
   },
   "Validations": {
+    "fullname_required": "Lütfen ad soyadınızı giriniz.",
     "email_required": "Geçerli bir email adresi giriniz.",
     "password_min": "Şifre en az 6 karakter olmalıdır.",
     "password_mismatch": "Şifreler eşleşmiyor."

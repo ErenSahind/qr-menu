@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useForm, FormProvider } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { CustomLink } from "@/components/custom-link";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,15 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createLoginSchema, type LoginSchema } from "@/lib/validations/auth";
+import { http } from "@/lib/api/http";
+import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const t = useTranslations("Login");
   const tValidations = useTranslations("Validations");
-
+  const router = useRouter();
   const loginSchema = createLoginSchema(tValidations);
 
   const methods = useForm<LoginSchema>({
@@ -30,10 +33,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
     mode: "all",
   });
-  const { handleSubmit } = methods;
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+  } = methods;
 
-  const onSubmit = (data: LoginSchema) => {
-    console.log(data);
+  const onSubmit = async (data: LoginSchema) => {
+    try {
+      await http.post("/api/login", data);
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.log(err);
+      toast({
+        variant: "destructive",
+        title: t("login_failed"),
+        description: err.message,
+      });
+    }
   };
 
   return (
@@ -89,6 +105,7 @@ export default function LoginPage() {
                 endAdornment={
                   <Button
                     variant={"ghost"}
+                    type="button"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -109,8 +126,20 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg">
-                {t("title")}
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("title")}
+                  </>
+                ) : (
+                  t("title")
+                )}
               </Button>
 
               <div className="relative py-2">

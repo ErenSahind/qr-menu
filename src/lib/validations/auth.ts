@@ -15,6 +15,9 @@ export type LoginSchema = z.infer<ReturnType<typeof createLoginSchema>>;
 export const createRegisterSchema = (t: (key: string) => string) =>
   z
     .object({
+      fullname: z.string().min(2, {
+        message: t("fullname_required"),
+      }),
       email: z.string().email({
         message: t("email_required"),
       }),
