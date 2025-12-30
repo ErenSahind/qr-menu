@@ -10,8 +10,6 @@ import { Mail, Lock, Eye, EyeOff, Loader2, User } from "lucide-react";
 import { CustomLink } from "@/components/custom-link";
 import { Button } from "@/components/ui/button";
 import { FormInput } from "@/components/form/form-input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   createRegisterSchema,
@@ -19,7 +17,7 @@ import {
 } from "@/lib/validations/auth";
 import { http } from "@/lib/api/http";
 import { useRouter } from "next/navigation";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -30,9 +28,10 @@ export default function RegisterPage() {
 
   const methods = useForm<RegisterSchema>({
     defaultValues: {
-      fullname: "",
+      full_name: "",
       email: "",
       password: "",
+      confirmPassword: "",
     },
     resolver: zodResolver(registerSchema),
     mode: "all",
@@ -44,16 +43,13 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterSchema) => {
     try {
-      await http.post("/api/register", data);
-      router.push("/dashboard");
-    } catch (err: any) {
-      console.log(err);
-      toast({
-        variant: "destructive",
-        title: t("register_failed"),
-        description: err.message,
+      toast.promise(http.post("/api/register", data), {
+        loading: t("register_in_progress"),
+        success: t("register_success"),
+        error: t("registration_failed"),
       });
-    }
+      router.push("/login");
+    } catch (err: any) {}
   };
 
   return (
@@ -95,10 +91,10 @@ export default function RegisterPage() {
           <FormProvider {...methods}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <FormInput
-                name="fullname"
-                label={t("fullname")}
+                name="full_name"
+                label={t("full_name")}
                 startAdornment={<User />}
-                placeholder={t("fullname_placeholder")}
+                placeholder={t("full_name_placeholder")}
               />
               <FormInput
                 name="email"
@@ -110,6 +106,25 @@ export default function RegisterPage() {
               <FormInput
                 name="password"
                 label={t("password_label")}
+                type={showPassword ? "text" : "password"}
+                startAdornment={<Lock />}
+                endAdornment={
+                  <Button
+                    type="button"
+                    variant={"ghost"}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                }
+              />
+              <FormInput
+                name="confirmPassword"
+                label={t("confirm_password_label")}
                 type={showPassword ? "text" : "password"}
                 startAdornment={<Lock />}
                 endAdornment={

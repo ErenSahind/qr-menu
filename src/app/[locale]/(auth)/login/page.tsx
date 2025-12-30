@@ -16,7 +16,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { createLoginSchema, type LoginSchema } from "@/lib/validations/auth";
 import { http } from "@/lib/api/http";
 import { useRouter } from "next/navigation";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
+import { CurrentUser } from "@/app/api/login/route";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -40,15 +41,15 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginSchema) => {
     try {
-      await http.post("/api/login", data);
+      const response = await http.post("/api/login", data);
+      const user = response.user as CurrentUser;
+      toast.success(t("login_success"), {
+        description: t("welcome_back", { name: user.full_name.split(" ")[0] }),
+      });
+      console.log(response);
       router.push("/dashboard");
     } catch (err: any) {
-      console.log(err);
-      toast({
-        variant: "destructive",
-        title: t("login_failed"),
-        description: err.message,
-      });
+      toast.error(t("login_failed"));
     }
   };
 
@@ -154,7 +155,7 @@ export default function LoginPage() {
               </div>
               <div className="text-center">
                 <CustomLink
-                  href="/forgot-password"
+                  href="/login"
                   className="text-sm font-medium text-primary hover:underline"
                 >
                   {t("forgot_password")}
